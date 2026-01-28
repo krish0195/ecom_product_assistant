@@ -1,11 +1,47 @@
 [project]
-name = "ecom-prod-assistant"
+name = "ecomm-prod-assistant"
 version = "0.1.0"
-description = "E-Commerce Product Assistant"
+description = "E-commerce Product Assistant with RAG"
 readme = "README.md"
 requires-python = ">=3.10"
 
-dependencies = []
+dependencies = [
+    # Web / API
+    "fastapi==0.116.1",
+    "uvicorn==0.35.0",
+    "python-multipart==0.0.20",
+
+    # UI
+    "streamlit==1.49.1",
+
+    # LangChain (ALIGNED – 0.3.x)
+    "langchain==0.3.27",
+    "langchain-core==0.3.75",
+    "langchain-community==0.3.27",
+    "langchain-openai==0.3.32",
+    "langchain-astradb==0.6.1",
+    "langchain-google-genai==2.1.8",
+    "langchain-groq==0.3.6",
+    "langgraph==0.6.7",
+
+    # RAG Evaluation
+    "ragas==0.3.4",
+
+    # Scraping
+    "beautifulsoup4==4.13.5",
+    "lxml==6.0.1",
+    "html5lib==1.1",
+    "selenium==4.35.0",
+    "undetected-chromedriver==3.5.5",
+    "ddgs==9.6.0",
+
+    # Utils
+    "python-dotenv==1.1.1",
+    "jinja2==3.1.6",
+    "structlog==25.4.0",
+    "mcp==1.14.0",
+    "langchain-mcp-adapters==0.1.10",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]

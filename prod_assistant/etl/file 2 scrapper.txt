@@ -1,0 +1,168 @@
+import csv
+import time
+import re
+import os
+
+from bs4 import BeautifulSoup
+import undetected_chromedriver as uc
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
+class FlipkartScraper:
+    def __init__(self, output_dir="data"):
+        self.output_dir = output_dir
+        os.makedirs(self.output_dir, exist_ok=True)
+
+    # ------------------ DRIVER ------------------
+    def _get_driver(self):
+        options = uc.ChromeOptions()
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--start-maximized")
+        return uc.Chrome(options=options, use_subprocess=True)
+
+    # ------------------ POPUP ------------------
+    def close_popup(self, driver, timeout=5):
+        try:
+            WebDriverWait(driver, timeout).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//button[contains(@class,'_2KpZ6l')]")
+                )
+            ).click()
+        except:
+            pass
+
+    # ------------------ SAFE FINDERS ------------------
+    def safe_find(self, parent, selectors):
+        for sel in selectors:
+            try:
+                return parent.find_element(By.CSS_SELECTOR, sel)
+            except:
+                continue
+        return None
+
+    def safe_text(self, parent, selectors, default="N/A"):
+        el = self.safe_find(parent, selectors)
+        return el.text.strip() if el else default
+
+    # ------------------ REVIEWS ------------------
+    def get_top_reviews(self, product_url, count=2):
+        if not product_url.startswith("http"):
+            return "No reviews found"
+
+        driver = self._get_driver()
+        reviews = []
+
+        try:
+            driver.get(product_url)
+            time.sleep(4)
+            self.close_popup(driver)
+
+            for _ in range(4):
+                ActionChains(driver).send_keys(Keys.END).perform()
+                time.sleep(1.5)
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            blocks = soup.select("div._6K-7Co")
+
+            seen = set()
+            for b in blocks:
+                text = b.get_text(" ", strip=True)
+                if text and len(text) > 50 and text not in seen:
+                    reviews.append(text)
+                    seen.add(text)
+                if len(reviews) >= count:
+                    break
+        except:
+            pass
+
+        driver.quit()
+        return " || ".join(reviews) if reviews else "No reviews found"
+
+    # ------------------ MAIN SCRAPER ------------------
+    def scrape_flipkart_products(self, query, max_products=1, review_count=2):
+        driver = self._get_driver()
+        search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
+        products = []
+
+        try:
+            driver.get(search_url)
+            time.sleep(4)
+            self.close_popup(driver)
+
+            items = driver.find_elements(By.CSS_SELECTOR, "div[data-id]")[:max_products]
+
+            for item in items:
+                try:
+                    title = self.safe_text(item, [
+                        "a.IRpwTa", "a.s1Q9rs", "div._4rR01T", "a._1fQZEK"
+                    ])
+
+                    price = self.safe_text(item, [
+                        "div._30jeq3", "div._1_WHN1"
+                    ])
+
+                    rating = self.safe_text(item, [
+                        "div._3LWZlK", "div.XQDdHH"
+                    ])
+
+                    reviews_text = self.safe_text(item, [
+                        "span._2_R_DZ", "span.Wphh3N"
+                    ])
+
+                    m = re.search(r"(\d+(?:,\d+)*)", reviews_text)
+                    total_reviews = m.group(1) if m else "N/A"
+
+                    link_el = self.safe_find(item, [
+                        "a._1fQZEK", "a[href*='/p/']"
+                    ])
+
+                    if not link_el:
+                        continue
+
+                    product_link = link_el.get_attribute("href")
+                    pid_match = re.search(r"(itm\w+)", product_link)
+                    product_id = pid_match.group(1) if pid_match else "N/A"
+
+                except:
+                    continue
+
+                top_reviews = self.get_top_reviews(product_link, review_count)
+
+                products.append([
+                    product_id, title, rating, total_reviews, price, top_reviews
+                ])
+        finally:
+            driver.quit()
+
+        return products
+
+    # ------------------ CSV ------------------
+    def save_to_csv(self, data, filename="product_reviews.csv"):
+        path = filename if os.path.isabs(filename) else os.path.join(self.output_dir, filename)
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "product_id", "title", "rating",
+                "total_reviews", "price", "top_reviews"
+            ])
+            writer.writerows(data)
+
+        print(f"Saved to: {path}")
+
+
+# ------------------ RUN ------------------
+if __name__ == "__main__":
+    scraper = FlipkartScraper()
+    products = scraper.scrape_flipkart_products(
+        query="iphone 15",
+        max_products=2,
+        review_count=2
+    )
+    scraper.save_to_csv(products)
