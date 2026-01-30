@@ -4,7 +4,8 @@ from langchain_astradb import AstraDBVectorStore
 #from prod_assistant.utils.config_loader import load_config
 
 from utils.config_loader import load_config
-
+from pathlib import Path
+import sys
 #from prod_assistant.utils.model_loader import ModelLoader
 
 from utils.model_loader import ModelLoader
@@ -17,8 +18,10 @@ from langchain.retrievers import ContextualCompressionRetriever
 
 
 # Add the project root to the Python path for direct script execution
-# project_root = Path(__file__).resolve().parents[2]
-# sys.path.insert(0, str(project_root))
+# Add the project root to the Python path for direct script execution
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root))
+
 
 class Retriever:
     def __init__(self):
@@ -28,7 +31,7 @@ class Retriever:
         self.config=load_config()
         self._load_env_variables()
         self.vstore = None
-        self.retriever_instance = None
+        self.retriever= None
     
     def _load_env_variables(self):
         """_summary_
@@ -60,6 +63,8 @@ class Retriever:
                 token=self.db_application_token,
                 namespace=self.db_keyspace,
                 )
+            
+        """ 
         if not self.retriever_instance:
             top_k = self.config["retriever"]["top_k"] if "retriever" in self.config else 3
             
@@ -81,7 +86,14 @@ class Retriever:
                 base_retriever=mmr_retriever
             )
             
-        return self.retriever_instance
+        return self.retriever_instance"""
+
+        if not self.retriever:
+            top_k = self.config["retriever"]["top_k"] if "retriever" in self.config else 3
+            retriever=self.vstore.as_retriever(search_kwargs={"k": top_k})
+            print("retriever loaded successfully")
+            return retriever
+        
             
     def call_retriever(self,query):
         """_summary_
@@ -91,18 +103,16 @@ class Retriever:
         return output
     
 if __name__=='__main__':
-
-
-    """
-    user_query = "Can you suggest good budget iPhone under 1,00,00 INR?"
-    
+   
     retriever_obj = Retriever()
-    
+    user_query = "Can you suggest good budget iPhone under 1,00,00 INR?"
     retrieved_docs = retriever_obj.call_retriever(user_query)
 
     for idx, doc in enumerate(retrieved_docs, 1):
-        print(f"Result {idx}: {doc.page_content}\nMetadata: {doc.metadata}\n") """
+        print(f"Result {idx}: {doc.page_content}\nMetadata: {doc.metadata}\n") 
     
+
+"""
     user_query = "Can you suggest good budget iPhone under 1,00,000 INR?"
     
     retriever_obj = Retriever()
@@ -118,8 +128,8 @@ if __name__=='__main__':
         for idx, doc in enumerate(retrieved_docs, 1):
             print(f"Source {idx}: {doc.metadata.get('product_name', 'Unknown')}")
 
-    
     """
+"""
     def _format_docs(docs) -> str:
         if not docs:
             return "No relevant documents found."
