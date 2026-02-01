@@ -3,7 +3,13 @@ packages = [
     "langchain",
     "python-dotenv",
     "langchain_core",
-    "streamlit"
+    "streamlit",
+    "langgraph",
+    "ragas",
+    "langchain-mcp-adapters",
+    "mcp",
+    "ddgs",
+    "langchain-openai"
 
     ]
 for pkg in packages:

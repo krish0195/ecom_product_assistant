@@ -14,14 +14,13 @@ from dotenv import load_dotenv
 load_dotenv()
 from langchain.retrievers.document_compressors import LLMChainFilter
 from langchain.retrievers import ContextualCompressionRetriever
-#from evaluation.ragas_eval import evaluate_context_precision, evaluate_response_relevancy
+from evaluation.ragas_eval import evaluate_context_precision, evaluate_response_relevancy
 
 
 # Add the project root to the Python path for direct script execution
 # Add the project root to the Python path for direct script execution
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
-
 
 class Retriever:
     def __init__(self):
@@ -31,7 +30,7 @@ class Retriever:
         self.config=load_config()
         self._load_env_variables()
         self.vstore = None
-        self.retriever= None
+        self.retriever_instance = None
     
     def _load_env_variables(self):
         """_summary_
@@ -63,8 +62,6 @@ class Retriever:
                 token=self.db_application_token,
                 namespace=self.db_keyspace,
                 )
-            
-        """ 
         if not self.retriever_instance:
             top_k = self.config["retriever"]["top_k"] if "retriever" in self.config else 3
             
@@ -86,14 +83,7 @@ class Retriever:
                 base_retriever=mmr_retriever
             )
             
-        return self.retriever_instance"""
-
-        if not self.retriever:
-            top_k = self.config["retriever"]["top_k"] if "retriever" in self.config else 3
-            retriever=self.vstore.as_retriever(search_kwargs={"k": top_k})
-            print("retriever loaded successfully")
-            return retriever
-        
+        return self.retriever_instance
             
     def call_retriever(self,query):
         """_summary_
@@ -103,33 +93,12 @@ class Retriever:
         return output
     
 if __name__=='__main__':
-   
-    retriever_obj = Retriever()
     user_query = "Can you suggest good budget iPhone under 1,00,00 INR?"
-    retrieved_docs = retriever_obj.call_retriever(user_query)
-
-    for idx, doc in enumerate(retrieved_docs, 1):
-        print(f"Result {idx}: {doc.page_content}\nMetadata: {doc.metadata}\n") 
-    
-
-"""
-    user_query = "Can you suggest good budget iPhone under 1,00,000 INR?"
     
     retriever_obj = Retriever()
     
-    # 1. Get the raw documents (what you are currently doing)
     retrieved_docs = retriever_obj.call_retriever(user_query)
     
-    # 2. Check if anything was actually found
-    if not retrieved_docs:
-        print("❌ No products found in the database matching your query.")
-    else:
-        print(f"✅ Found {len(retrieved_docs)} relevant snippets.\n")
-        for idx, doc in enumerate(retrieved_docs, 1):
-            print(f"Source {idx}: {doc.metadata.get('product_name', 'Unknown')}")
-
-    """
-"""
     def _format_docs(docs) -> str:
         if not docs:
             return "No relevant documents found."
@@ -150,16 +119,16 @@ if __name__=='__main__':
     #this is not an actual output this have been written to test the pipeline
     response="iphone 16 plus, iphone 16, iphone 15 are best phones under 1,00,000 INR."
     
-    #context_score = evaluate_context_precision(user_query,response,retrieved_contexts)
-    #relevancy_score = evaluate_response_relevancy(user_query,response,retrieved_contexts)
+    context_score = evaluate_context_precision(user_query,response,retrieved_contexts)
+    relevancy_score = evaluate_response_relevancy(user_query,response,retrieved_contexts)
     
-    #print("\n--- Evaluation Metrics ---")
-    #print("Context Precision Score:", context_score)
-    #print("Response Relevancy Score:", relevancy_score)
+    print("\n--- Evaluation Metrics ---")
+    print("Context Precision Score:", context_score)
+    print("Response Relevancy Score:", relevancy_score)
     
 
     
     
     
     # for idx, doc in enumerate(results, 1):
-    #     print(f"Result {idx}: {doc.page_content}\nMetadata: {doc.metadata}\n") """
+    #     print(f"Result {idx}: {doc.page_content}\nMetadata: {doc.metadata}\n")
